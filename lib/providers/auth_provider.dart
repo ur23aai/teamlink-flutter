@@ -4,7 +4,7 @@ import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final _authService = AuthService();
-  
+
   User? _user;
   bool _isLoading = false;
   String? _errorMessage;
@@ -131,7 +131,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Logout
+// Logout
   Future<void> logout() async {
     await _authService.logout();
     _user = null;
