@@ -8,7 +8,7 @@ class Task {
   final DateTime? dueDate;
   final String teamId;
   final String teamName;
-  final AssignedUser? assignedTo;
+  final List<AssignedUser> assignedTo;
   final AssignedUser createdBy;
   final DateTime createdAt;
 
@@ -22,7 +22,7 @@ class Task {
     this.dueDate,
     required this.teamId,
     required this.teamName,
-    this.assignedTo,
+    this.assignedTo = const [],
     required this.createdBy,
     required this.createdAt,
   });
@@ -39,8 +39,10 @@ class Task {
       teamId: json['team']?['teamId'] ?? '',
       teamName: json['team']?['name'] ?? '',
       assignedTo: json['assignedTo'] != null
-          ? AssignedUser.fromJson(json['assignedTo'])
-          : null,
+          ? (json['assignedTo'] as List)
+              .map((u) => AssignedUser.fromJson(u))
+              .toList()
+          : [],
       createdBy: AssignedUser.fromJson(json['createdBy']),
       createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
     );
@@ -57,7 +59,7 @@ class Task {
       'dueDate': dueDate?.toIso8601String(),
       'teamId': teamId,
       'teamName': teamName,
-      'assignedTo': assignedTo?.toJson(),
+      'assignedTo': assignedTo.map((u) => u.toJson()).toList(),
       'createdBy': createdBy.toJson(),
       'createdAt': createdAt.toIso8601String(),
     };

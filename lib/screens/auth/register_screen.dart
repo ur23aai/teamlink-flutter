@@ -19,6 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -42,6 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (success) {
       if (mounted) {
+        setState(() => _errorMessage = null);
         final chatProvider = Provider.of<ChatProvider>(context, listen: false);
         await chatProvider.initSocket();
 
@@ -51,12 +53,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Registration failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() => _errorMessage =
+            authProvider.errorMessage ?? 'Registration failed');
       }
     }
   }
@@ -101,6 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Full Name',
                         ),
+                        onChanged: (_) => setState(() => _errorMessage = null),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your name';
@@ -118,6 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Email',
                         ),
+                        onChanged: (_) => setState(() => _errorMessage = null),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
@@ -132,6 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        onChanged: (_) => setState(() => _errorMessage = null),
                         decoration: InputDecoration(
                           hintText: 'Password',
                           suffixIcon: IconButton(
@@ -162,6 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       TextFormField(
                         controller: _confirmPasswordController,
                         obscureText: _obscureConfirmPassword,
+                        onChanged: (_) => setState(() => _errorMessage = null),
                         decoration: InputDecoration(
                           hintText: 'Confirm Password',
                           suffixIcon: IconButton(
@@ -189,7 +191,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: _errorMessage == null
+                            ? const SizedBox.shrink()
+                            : Container(
+                                key: const ValueKey('error'),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.red.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.error_outline,
+                                        color: Colors.red.shade700, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: TextStyle(
+                                          color: Colors.red.shade700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => setState(
+                                          () => _errorMessage = null),
+                                      child: Icon(Icons.close,
+                                          color: Colors.red.shade400,
+                                          size: 18),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 8),
                       Consumer<AuthProvider>(
                         builder: (context, authProvider, _) {
                           return _GradientButton(

@@ -38,6 +38,40 @@ class TeamProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Create team and return MongoDB _id (used for adding members right after)
+  Future<String?> createTeamAndGetId({
+    required String name,
+    String? description,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _teamService.createTeam(
+        name: name,
+        description: description,
+      );
+
+      if (result['success']) {
+        await loadTeams();
+        _isLoading = false;
+        notifyListeners();
+        return (result['team'] as dynamic).id as String;
+      } else {
+        _errorMessage = result['message'];
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    }
+  }
+
   // Create team
   Future<bool> createTeam({
     required String name,
@@ -83,6 +117,70 @@ class TeamProvider extends ChangeNotifier {
 
       if (result['success']) {
         await loadTeams(); // Reload teams
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'];
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Update team (Admin only)
+  Future<bool> updateTeam({
+    required String teamId,
+    String? name,
+    String? description,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _teamService.updateTeam(
+        teamId: teamId,
+        name: name,
+        description: description,
+      );
+
+      if (result['success']) {
+        await loadTeams();
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'];
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Delete team (Admin only)
+  Future<bool> deleteTeam(String teamId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _teamService.deleteTeam(teamId);
+
+      if (result['success']) {
+        await loadTeams();
         _isLoading = false;
         notifyListeners();
         return true;

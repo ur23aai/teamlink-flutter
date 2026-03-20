@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -37,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success) {
       if (mounted) {
+        setState(() => _errorMessage = null);
         final chatProvider = Provider.of<ChatProvider>(context, listen: false);
         await chatProvider.initSocket();
         Navigator.of(context).pushReplacement(
@@ -45,12 +47,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Login failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() =>
+            _errorMessage = authProvider.errorMessage ?? 'Login failed');
       }
     }
   }
@@ -115,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 decoration: const InputDecoration(
                                   hintText: 'Email',
                                 ),
+                                onChanged: (_) => setState(() => _errorMessage = null),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
@@ -129,6 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
+                                onChanged: (_) => setState(() => _errorMessage = null),
                                 decoration: InputDecoration(
                                   hintText: 'Password',
                                   suffixIcon: IconButton(
@@ -155,7 +155,49 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 20),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: _errorMessage == null
+                                    ? const SizedBox.shrink()
+                                    : Container(
+                                        key: const ValueKey('error'),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade50,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                              color: Colors.red.shade200),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.error_outline,
+                                                color: Colors.red.shade700,
+                                                size: 20),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                _errorMessage!,
+                                                style: TextStyle(
+                                                  color: Colors.red.shade700,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => setState(
+                                                  () => _errorMessage = null),
+                                              child: Icon(Icons.close,
+                                                  color: Colors.red.shade400,
+                                                  size: 18),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(height: 8),
                               Consumer<AuthProvider>(
                                 builder: (context, authProvider, _) {
                                   return _GradientButton(

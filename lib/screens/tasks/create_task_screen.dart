@@ -19,13 +19,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  
+
   Team? _selectedTeam;
   String _selectedPriority = 'Medium';
   String _selectedStatus = 'To Do';
-  String? _selectedAssignee;
   DateTime? _dueDate;
   List<TeamMember> _teamMembers = [];
+  List<TeamMember> _selectedAssignees = [];
   bool _loadingMembers = false;
 
   final List<String> _priorities = ['Low', 'Medium', 'High'];
@@ -34,7 +34,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   void initState() {
     super.initState();
-    // Load teams
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<TeamProvider>(context, listen: false).loadTeams();
     });
@@ -48,12 +47,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   Future<void> _loadTeamMembers(String teamId) async {
-    setState(() => _loadingMembers = true);
+    setState(() {
+      _loadingMembers = true;
+      _selectedAssignees = [];
+    });
     final members = await TeamService().getTeamMembers(teamId);
     setState(() {
       _teamMembers = members;
       _loadingMembers = false;
-      _selectedAssignee = null; // Reset assignee when team changes
     });
   }
 
@@ -67,6 +68,91 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (picked != null) {
       setState(() => _dueDate = picked);
     }
+  }
+
+  void _showAssigneePicker() {
+    if (_teamMembers.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Select Assignees',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ListView(
+                    children: _teamMembers.map((member) {
+                      final isSelected = _selectedAssignees
+                          .any((s) => s.userId == member.userId);
+                      return CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (checked) {
+                          setModalState(() {
+                            if (checked == true) {
+                              _selectedAssignees.add(member);
+                            } else {
+                              _selectedAssignees.removeWhere(
+                                  (s) => s.userId == member.userId);
+                            }
+                          });
+                          setState(() {});
+                        },
+                        title: Text(member.name),
+                        subtitle: Text(member.email),
+                        secondary: CircleAvatar(
+                          backgroundColor: const Color(0xFF8B5CF6),
+                          child: Text(
+                            member.name.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        activeColor: const Color(0xFF8B5CF6),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B5CF6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Done',
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _createTask() async {
@@ -90,7 +176,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           ? null
           : _descriptionController.text.trim(),
       teamId: _selectedTeam!.teamId,
-      assignedTo: _selectedAssignee,
+      assignedTo: _selectedAssignees.map((m) => m.userId).toList(),
       priority: _selectedPriority,
       status: _selectedStatus,
       dueDate: _dueDate,
@@ -131,18 +217,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.task_alt,
-                size: 64,
-                color: Color(0xFF8B5CF6),
-              ),
+              const Icon(Icons.task_alt, size: 64, color: Color(0xFF8B5CF6)),
               const SizedBox(height: 16),
               const Text(
                 'Create New Task',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 32),
 
@@ -174,10 +253,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               // Team Selection
               const Text(
                 'Team',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
               Consumer<TeamProvider>(
@@ -185,11 +261,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   if (teamProvider.isLoading) {
                     return const CircularProgressIndicator();
                   }
-
                   if (teamProvider.teams.isEmpty) {
                     return const Text('No teams available');
                   }
-
                   return DropdownButtonFormField<Team>(
                     value: _selectedTeam,
                     decoration: InputDecoration(
@@ -215,9 +289,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       }
                     },
                     validator: (value) {
-                      if (value == null) {
-                        return 'Please select a team';
-                      }
+                      if (value == null) return 'Please select a team';
                       return null;
                     },
                   );
@@ -225,50 +297,73 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Assign To
+              // Assign To (multi-select)
               const Text(
                 'Assign To (Optional)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedAssignee,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.person),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
+              InkWell(
+                onTap: _loadingMembers || _selectedTeam == null
+                    ? null
+                    : _showAssigneePicker,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.people, color: Colors.grey),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _loadingMembers
+                            ? const Text('Loading members...',
+                                style: TextStyle(color: Colors.grey))
+                            : _selectedTeam == null
+                                ? const Text('Select a team first',
+                                    style: TextStyle(color: Colors.grey))
+                                : _selectedAssignees.isEmpty
+                                    ? const Text('Tap to select members',
+                                        style: TextStyle(color: Colors.grey))
+                                    : Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: _selectedAssignees
+                                            .map((m) => Chip(
+                                                  label: Text(m.name,
+                                                      style: const TextStyle(
+                                                          fontSize: 12)),
+                                                  backgroundColor: const Color(
+                                                          0xFF8B5CF6)
+                                                      .withOpacity(0.1),
+                                                  deleteIcon: const Icon(
+                                                      Icons.close,
+                                                      size: 14),
+                                                  onDeleted: () {
+                                                    setState(() {
+                                                      _selectedAssignees
+                                                          .removeWhere((s) =>
+                                                              s.userId ==
+                                                              m.userId);
+                                                    });
+                                                  },
+                                                ))
+                                            .toList(),
+                                      ),
+                      ),
+                      const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                    ],
                   ),
                 ),
-                hint: _loadingMembers
-                    ? const Text('Loading members...')
-                    : const Text('Select team member'),
-                items: _teamMembers.map((member) {
-                  return DropdownMenuItem(
-                    value: member.userId,
-                    child: Text(member.name),
-                  );
-                }).toList(),
-                onChanged: _loadingMembers
-                    ? null
-                    : (value) {
-                        setState(() => _selectedAssignee = value);
-                      },
               ),
               const SizedBox(height: 20),
 
               // Priority
               const Text(
                 'Priority',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -289,9 +384,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   );
                 }).toList(),
                 onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedPriority = value);
-                  }
+                  if (value != null) setState(() => _selectedPriority = value);
                 },
               ),
               const SizedBox(height: 20),
@@ -299,10 +392,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               // Status
               const Text(
                 'Status',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -323,9 +413,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   );
                 }).toList(),
                 onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedStatus = value);
-                  }
+                  if (value != null) setState(() => _selectedStatus = value);
                 },
               ),
               const SizedBox(height: 20),
@@ -333,10 +421,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               // Due Date
               const Text(
                 'Due Date (Optional)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
               InkWell(
@@ -357,16 +442,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             : DateFormat('MMM dd, yyyy').format(_dueDate!),
                         style: TextStyle(
                           fontSize: 16,
-                          color: _dueDate == null ? Colors.grey[600] : Colors.black,
+                          color:
+                              _dueDate == null ? Colors.grey[600] : Colors.black,
                         ),
                       ),
                       const Spacer(),
                       if (_dueDate != null)
                         IconButton(
                           icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() => _dueDate = null);
-                          },
+                          onPressed: () => setState(() => _dueDate = null),
                         ),
                     ],
                   ),

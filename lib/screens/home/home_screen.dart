@@ -324,10 +324,20 @@ class _DashboardTabState extends State<DashboardTab> {
                                   ),
                                 ),
                                 onTap: () {
+                                  final teams = Provider.of<TeamProvider>(
+                                          context,
+                                          listen: false)
+                                      .teams;
+                                  final isAdmin = teams.any((t) =>
+                                      t.teamId == task.teamId &&
+                                      t.role == 'Admin');
                                   Navigator.pushNamed(
                                     context,
                                     '/task-details',
-                                    arguments: task,
+                                    arguments: {
+                                      'task': task,
+                                      'isAdmin': isAdmin,
+                                    },
                                   );
                                 },
                               ),
@@ -959,7 +969,12 @@ class _TaskListView extends StatelessWidget {
           if (index == 0) {
             return _buildHeader(context);
           }
-          return _TaskCard(task: tasks[index - 1]);
+          final t = tasks[index - 1];
+          final teams =
+              Provider.of<TeamProvider>(context, listen: false).teams;
+          final isAdmin = teams
+              .any((tm) => tm.teamId == t.teamId && tm.role == 'Admin');
+          return _TaskCard(task: t, isAdmin: isAdmin);
         },
       ),
     );
@@ -1057,8 +1072,9 @@ class _TaskListView extends StatelessWidget {
 
 class _TaskCard extends StatelessWidget {
   final Task task;
+  final bool isAdmin;
 
-  const _TaskCard({required this.task});
+  const _TaskCard({required this.task, this.isAdmin = false});
 
   Color _getPriorityColor() {
     switch (task.priority) {
@@ -1095,7 +1111,7 @@ class _TaskCard extends StatelessWidget {
           Navigator.pushNamed(
             context,
             '/task-details',
-            arguments: task,
+            arguments: {'task': task, 'isAdmin': isAdmin},
           );
         },
         borderRadius: BorderRadius.circular(16),
@@ -1171,12 +1187,14 @@ class _TaskCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  if (task.assignedTo != null) ...[
+                  if (task.assignedTo.isNotEmpty) ...[
                     CircleAvatar(
                       radius: 12,
                       backgroundColor: const Color(0xFF8B5CF6),
                       child: Text(
-                        task.assignedTo!.name.substring(0, 1).toUpperCase(),
+                        task.assignedTo.first.name
+                            .substring(0, 1)
+                            .toUpperCase(),
                         style: const TextStyle(
                           fontSize: 10,
                           color: Colors.white,
@@ -1186,7 +1204,9 @@ class _TaskCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      task.assignedTo!.name,
+                      task.assignedTo.length == 1
+                          ? task.assignedTo.first.name
+                          : '${task.assignedTo.first.name} +${task.assignedTo.length - 1}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],

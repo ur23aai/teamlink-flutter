@@ -6,6 +6,7 @@ import '../../models/announcement.dart';
 import '../../services/announcement_service.dart';
 import 'package:intl/intl.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/team_provider.dart';
 import 'package:provider/provider.dart';
 
 class TeamDetailsScreen extends StatefulWidget {
@@ -21,6 +22,9 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
   final _teamService = TeamService();
   final _announcementService = AnnouncementService();
 
+  late String _teamName;
+  late String _teamDescription;
+
   List<TeamMember> _members = [];
   List<Announcement> _announcements = [];
 
@@ -30,6 +34,8 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    _teamName = widget.team.name;
+    _teamDescription = widget.team.description ?? '';
     _loadMembers();
     _loadAnnouncements();
   }
@@ -116,6 +122,130 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
 
         if (response['success']) {
           _loadAnnouncements();
+        }
+      }
+    }
+  }
+
+  void _showEditTeamDialog() {
+    final nameController =
+        TextEditingController(text: _teamName);
+    final descController =
+        TextEditingController(text: _teamDescription);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Team'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Team Name',
+                hintText: 'Enter team name',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Description (Optional)',
+                hintText: 'Enter description',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(context);
+
+              final teamProvider =
+                  Provider.of<TeamProvider>(context, listen: false);
+              final success = await teamProvider.updateTeam(
+                teamId: widget.team.id,
+                name: name,
+                description: descController.text.trim().isEmpty
+                    ? null
+                    : descController.text.trim(),
+              );
+
+              if (mounted) {
+                if (success) {
+                  setState(() {
+                    _teamName = name;
+                    _teamDescription = descController.text.trim();
+                  });
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success
+                        ? 'Team updated successfully'
+                        : (teamProvider.errorMessage ?? 'Failed to update team')),
+                    backgroundColor: success ? Colors.green : Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteTeam() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Team'),
+        content: Text(
+            'Are you sure you want to delete "$_teamName"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final teamProvider =
+          Provider.of<TeamProvider>(context, listen: false);
+      final success = await teamProvider.deleteTeam(widget.team.id);
+
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Team deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  teamProvider.errorMessage ?? 'Failed to delete team'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     }
@@ -259,6 +389,36 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
             },
             tooltip: 'Team Chat',
           ),
+          if (widget.team.role == 'Admin')
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') _showEditTeamDialog();
+                if (value == 'delete') _confirmDeleteTeam();
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 18),
+                      SizedBox(width: 8),
+                      Text('Edit Team'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete Team',
+                          style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: _loadingMembers && _members.isEmpty
@@ -297,7 +457,7 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      widget.team.name,
+                                      _teamName,
                                       style: const TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
@@ -332,11 +492,10 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
                               ),
                             ],
                           ),
-                          if (widget.team.description != null &&
-                              widget.team.description!.isNotEmpty) ...[
+                          if (_teamDescription.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Text(
-                              widget.team.description!,
+                              _teamDescription,
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[600],

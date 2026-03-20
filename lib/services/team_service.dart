@@ -187,6 +187,21 @@ class TeamService {
     }
   }
 
+  // Search users by name or email
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    try {
+      final response = await _api.get('/users/search', params: {'query': query});
+      if (response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((u) => Map<String, dynamic>.from(u)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Search Users Error: $e');
+      return [];
+    }
+  }
+
   // Delete team (Admin only)
   Future<Map<String, dynamic>> deleteTeam(String teamId) async {
     try {

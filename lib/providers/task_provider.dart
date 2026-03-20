@@ -71,7 +71,7 @@ class TaskProvider extends ChangeNotifier {
     required String title,
     String? description,
     required String teamId,
-    String? assignedTo,
+    List<String>? assignedTo,
     String? priority,
     String? status,
     DateTime? dueDate,
@@ -84,6 +84,38 @@ class TaskProvider extends ChangeNotifier {
         assignedTo: assignedTo,
         priority: priority,
         status: status,
+        dueDate: dueDate,
+      );
+
+      if (result['success']) {
+        await loadMyTasks();
+        return true;
+      } else {
+        _errorMessage = result['message'];
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    }
+  }
+
+  // Update task (full edit)
+  Future<bool> updateTask({
+    required String taskId,
+    String? title,
+    String? description,
+    String? priority,
+    List<String>? assignedTo,
+    DateTime? dueDate,
+  }) async {
+    try {
+      final result = await _taskService.updateTask(
+        taskId: taskId,
+        title: title,
+        description: description,
+        priority: priority,
+        assignedTo: assignedTo,
         dueDate: dueDate,
       );
 

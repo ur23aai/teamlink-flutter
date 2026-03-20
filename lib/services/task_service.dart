@@ -50,13 +50,13 @@ class TaskService {
     required String title,
     String? description,
     required String teamId,
-    String? assignedTo,
+    List<String>? assignedTo,
     String? priority,
     String? status,
     DateTime? dueDate,
   }) async {
     try {
-      final data = {
+      final data = <String, dynamic>{
         'title': title,
         'teamId': teamId,
       };
@@ -64,7 +64,7 @@ class TaskService {
       if (description != null && description.isNotEmpty) {
         data['description'] = description;
       }
-      if (assignedTo != null) data['assignedTo'] = assignedTo;
+      if (assignedTo != null && assignedTo.isNotEmpty) data['assignedTo'] = assignedTo;
       if (priority != null) data['priority'] = priority;
       if (status != null) data['status'] = status;
       if (dueDate != null) data['dueDate'] = dueDate.toIso8601String();
@@ -98,7 +98,7 @@ class TaskService {
     String? description,
     String? status,
     String? priority,
-    String? assignedTo,
+    List<String>? assignedTo,
     DateTime? dueDate,
   }) async {
     try {

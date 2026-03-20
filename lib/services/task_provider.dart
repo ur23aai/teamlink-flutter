@@ -65,7 +65,7 @@ class TaskProvider extends ChangeNotifier {
     required String title,
     String? description,
     required String teamId,
-    String? assignedTo,
+    List<String>? assignedTo,
     String? priority,
     String? status,
     DateTime? dueDate,

@@ -13,6 +13,7 @@ import 'services/storage_service.dart';
 import 'providers/task_provider.dart';
 import 'screens/tasks/create_task_screen.dart';
 import 'screens/tasks/task_details_screen.dart';
+import 'screens/tasks/edit_task_screen.dart';
 import 'models/task.dart';
 import 'providers/notification_provider.dart';
 import 'screens/notifications/notifications_screen.dart';
@@ -61,10 +62,19 @@ class MyApp extends StatelessWidget {
               builder: (context) => TeamDetailsScreen(team: team),
             );
           }
-          if (settings.name == '/task-details') {
+          if (settings.name == '/edit-task') {
             final task = settings.arguments as Task;
             return MaterialPageRoute(
-              builder: (context) => TaskDetailsScreen(task: task),
+              builder: (context) => EditTaskScreen(task: task),
+            );
+          }
+          if (settings.name == '/task-details') {
+            final args = settings.arguments as Map<String, dynamic>;
+            final task = args['task'] as Task;
+            final isAdmin = args['isAdmin'] as bool? ?? false;
+            return MaterialPageRoute(
+              builder: (context) =>
+                  TaskDetailsScreen(task: task, isAdmin: isAdmin),
             );
           }
           if (settings.name == '/chat-room') {
